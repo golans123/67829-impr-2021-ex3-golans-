@@ -160,19 +160,8 @@ def expand(image, filter_vec):
         input=temp, weights=2*col_filter_vec, output=None,
         mode='reflect', cval=0.0, origin=0)
     # up-sample by adding zeros in the odd places.
-    # for rows
-    # expanded_image = np.dstack(
-    #    (expanded_image, np.zeros_like(expanded_image))).reshape(
-    #    expanded_image.shape[0], -1)
-    # for rows
-    # expanded_image = np.hstack(
-    #     (expanded_image, np.zeros_like(expanded_image[0]))).reshape(
-    #     -1, expanded_image.shape[1])
-    expanded_image = np.zeros((2*image.shape[0], 2*image.shape[1]))
+    expanded_image = np.zeros((2*temp.shape[0], 2*temp.shape[1]))
     expanded_image[::2, ::2] = temp
-    # todo: should remove last ow and col? im len is a power of 2
-    # expanded_image = np.delete(expanded_image, -1, 0)
-    # expanded_image = np.delete(expanded_image, -1, 1)
     return expanded_image
 
 
@@ -216,17 +205,20 @@ def build_laplacian_pyramid(im, max_levels, filter_size):
     """
     pyr = []  # output is a python list
     gaussian_pyramid, filter_vec = build_gaussian_pyramid(im, max_levels, filter_size)
-    new_im = im - expand(gaussian_pyramid[0 + 1], filter_vec)
+    new_im = None
     for i in range(len(gaussian_pyramid)):
+        if i < len(gaussian_pyramid) - 1:  # len(gaussian_pyramid) - 2
+            new_im = gaussian_pyramid[i] - expand(gaussian_pyramid[i + 1], filter_vec)
+        if i == len(gaussian_pyramid) - 1:
+            new_im = gaussian_pyramid[-1]
         # insert level to the top
         pyr.insert(len(pyr), new_im)
-        # should not be entered in the outer-loop's last iteration
-        if i < len(gaussian_pyramid) - 1:
-            new_im = new_im - expand(gaussian_pyramid[i + 1], filter_vec)
     return pyr, filter_vec
 
 
 # ******************* 3.2 Laplacian pyramid reconstruction *******************
+
+
 def laplacian_to_image(lpyr, filter_vec, coeff):
     """
     the reconstruction of an image from its Laplacian Pyramid.
@@ -245,9 +237,9 @@ def laplacian_to_image(lpyr, filter_vec, coeff):
      levels in the pyramid lpyr.
     :return: img
     """
-    img = coeff[-1] * lpyr[-1]
-    # for i = len(lpyr) - 2, len(lpyr) - 3, ..., 0.
-    for i in range(len(lpyr) - 2, -1, -1):
+    img = None
+    # for i = len(lpyr) - 1, len(lpyr) - 3, ..., 0.
+    for i in range(len(lpyr) - 1, -1, -1):
         img = expand(img, filter_vec)
         img += coeff[i] * lpyr[i]
     return img
@@ -270,11 +262,11 @@ def render_pyramid(pyr, levels):
     [0, 1]). The function render_pyramid should only return the big image res.
     """
     res = None  # np.asarray(pyr[0]) todo: can be none?
+    # stretch the values of each pyramid level to [0, 1]
+    stretched_pyr = (pyr - np.min(pyr)) / (np.max(pyr) - np.min(pyr))
     for i in range(levels):
-        # stretch the values of each pyramid level to [0, 1]
-
         # composing it into the black wide image
-        res = np.hstack((res, np.asarray(pyr[i])))
+        res = np.hstack((res, np.asarray(stretched_pyr[i])))
     return res
 
 
@@ -291,6 +283,106 @@ def display_pyramid(pyr, levels):
     plt.imshow(result)  # cmap='gray'
 
 
+# ********************* 4 Pyramid Blending ***********************************
+
+
+def pyramid_blending(im1, im2, mask, max_levels, filter_size_im, filter_size_mask):
+    """
+    pyramid blending as described in the lecture.
+
+    im1, im2 and mask should all have the same dimensions and that once again
+    you can assume that image dimensions are multiples of 2(max_levels−1).
+
+    convert the mask to np.float64, since fractional values should appear while
+    constructing the mask’s pyramid.
+
+    Lout should be reconstructed in each level.
+
+    Make sure the output im_blend is a valid grayscale image in the range
+    [0, 1], by clipping the result to that range
+
+    :param im1: an input grayscale image to be blended.
+    :param im2: an input grayscale image to be blended.
+    :param mask: a boolean (dtype == np.bool) mask containing True and False
+    representing which parts of im1 and im2 should appear in the resulting
+    im_blend. Note that a value of True corresponds to 1, and False corresponds
+    to 0.
+    :param max_levels: the max_levels parameter you should use when generating
+    the Gaussian and Laplacian pyramid
+    :param filter_size_im: the size of the Gaussian filter (an odd scalar that
+    represents a squared filter) which defining the filter used in the
+    construction of the Laplacian pyramids of im1 and im2.
+    :param filter_size_mask: the size of the Gaussian filter(an odd scalar that
+    represents a squared filter) which defining the filter used in the
+    construction of the Gaussian pyramid of mask
+    :return:
+    """
+    # 1. Construct Laplacian pyramids L1 and L2 for the input images im1 and
+    # im2, respectively.
+    first_laplacian_pyramid = build_laplacian_pyramid(im1, max_levels, filter_size_im)
+    second_laplacian_pyramid = build_laplacian_pyramid(im2, max_levels, filter_size_im)
+
+    # 2. Construct a Gaussian pyramid Gm for the provided mask
+    # (convert it first to np.float64).
+    mask_gaussian_pyramid, filter_vec = build_gaussian_pyramid(mask, max_levels, filter_size_mask)
+    # 3. Construct the Laplacian pyramid of the blended image for each level k:
+    # Lout[k] = Gm[k] · L1[k] + (1 − Gm[k]) · L2[k], pixel-wise multiplication.
+    # Lout should be reconstructed in each level.
+    output_laplacian_pyramid = []
+    for i in range(len(first_laplacian_pyramid)):
+        temp = None  # np.ones_like(mask_gaussian_pyramid[i]) − mask_gaussian_pyramid[i]
+        output_laplacian_pyramid[i] = \
+        np.multiply(mask_gaussian_pyramid[i], first_laplacian_pyramid[i]) + \
+        np.multiply(temp, second_laplacian_pyramid[i])
+    # 4. Reconstruct the resulting blended image from the Laplacian pyramid
+    # Lout (using ones for coefficients).
+    coeff = np.ones_like(output_laplacian_pyramid)
+    im_blend = laplacian_to_image(output_laplacian_pyramid, filter_vec, coeff)
+    # Make sure the output im_blend is a valid grayscale image in the range
+    # [0, 1], by clipping the result to that range
+    im_blend = np.clip(a=im_blend, a_min=0, a_max=1)
+    return im_blend
+
+
+# ****************** 4.1 Your blending examples ******************************
+# Don’t forget to include these additional 6 image files (in jpg format) in
+# your submission for the scripts to function properly.
+def blending_example1():
+    """
+    performing pyramid blending on sets of image pairs and masks you find nice.
+
+    Display (using plt.imshow()) the two input images, the mask, and the
+    resulting blended image in a single figure (you can use plt.subplot() with
+    4 quadrants), before returning these objects.
+    The examples should present color images (RGB). To generate blended RGB
+    images, perform blending on each color channel separately (on red, green
+    and blue) and then combine the results into a single image.
+    Important: when you load your own images, you must use relative paths together with the this function:
+    :return: Each function should return the two images (im1 and im2), the mask (mask)
+    and the resulting blended image (im_blend).
+    """
+    im1_filename = "a"
+    im2_filename = "b"
+    mask_filename = "c"
+    im1 = imageio.imread(im1_filename).astype(np.float64)
+    im2 = imageio.imread(im2_filename).astype(np.float64)
+    mask = imageio.imread(mask_filename).astype(np.float64)
+    max_levels = 3
+    filter_size_im = 3
+    filter_size_mask = 3
+    im_blend = pyramid_blending(im1, im2, mask, max_levels, filter_size_im, filter_size_mask)
+    # Display the two input images, the mask, and the resulting blended image
+    # in a single figure (you can use plt.subplot() w)
+    plt.subplot2grid((2, 2), (2, 0), rowspan=1, colspan=1)  # plt.subplot() w/ 4 quadrants
+    plt.imshow()
+    return im1, im2, mask, im_blend
+
+
+# def blending_example2():
+#     return im1, im2, mask, im_blend
+
+
+# ************************* from sol1 ***************************************
 def read_image(filename, representation):
     """
     a function which reads an image file and converts it into a given
