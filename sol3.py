@@ -283,7 +283,8 @@ def render_pyramid(pyr, levels):
     while bool(i <= levels - 1) and (i < len(pyr)):
         # stretch the values of each pyramid level to [0, 1]
         stretched_pyr = linear_stretch_image(pyr[i])
-        res[:len(pyr[i]), cols_index:cols_index + len(pyr[i][0])] = stretched_pyr
+        res[:len(pyr[i]), cols_index:cols_index + len(pyr[i][0])] = \
+            stretched_pyr
         cols_index += len(pyr[i][0])
         i += 1
     return res
