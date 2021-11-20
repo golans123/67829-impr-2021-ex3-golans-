@@ -1,0 +1,9 @@
+Q2
+What happens (and why does this happen) to the result blending from section 4 image when:
+Q2: Blending is performed with different image filters (filter_size_im = 1,3,5,7...).
+
+A2
+the bigger the filter size, the longer/smoother the transition are from one picture to another is.
+This happens since it creates laplacian pyramid pictures with greater contrast, this means that each level
+represents a smaller/narrower frequency domain, which its higher frequencies. Thus each stitching is between
+two pictures with greater frequency similarity and the stitching is smoother.

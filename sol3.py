@@ -34,7 +34,6 @@ def create_filter_vec(filter_size):
             signal.convolve(in1=final_filter_vec, in2=filter_vec)
     # normalize
     final_filter_vec = final_filter_vec / final_filter_vec.sum()
-    # print(f"final_filter_vec: {final_filter_vec}")
     return final_filter_vec.reshape(1, final_filter_vec.shape[0])
 
 
@@ -55,12 +54,14 @@ def reduce(image, filter_vec):
     # blur
     # as a row vector
     row_filter_vec = filter_vec
-    reduced_image = ndimage.filters.convolve(input=image, weights=row_filter_vec, output=None, mode='reflect', cval=0.0,
-                                             origin=0)
+    reduced_image = ndimage.filters.convolve(
+        input=image, weights=row_filter_vec, output=None, mode='reflect',
+        cval=0.0, origin=0)
     # as a column vector
     col_filter_vec = filter_vec.reshape(filter_vec.shape[1], 1)
-    reduced_image = ndimage.filters.convolve(input=reduced_image, weights=col_filter_vec, output=None, mode='reflect',
-                                             cval=0.0, origin=0)
+    reduced_image = ndimage.filters.convolve(
+        input=reduced_image, weights=col_filter_vec, output=None,
+        mode='reflect', cval=0.0, origin=0)
     # sub-sample
     reduced_image = reduced_image[::2, ::2]
     return reduced_image
@@ -147,21 +148,21 @@ def expand(image, filter_vec):
     :param filter_vec
     :return:
     """
+    # up-sample by adding zeros in the odd places.
+    expanded_image = np.zeros((2 * image.shape[0], 2 * image.shape[1]))
+    expanded_image[::2, ::2] = image
     # blur
     # to maintain constant brightness 2*filter should actually be used
     # as a row vector
     row_filter_vec = filter_vec
-    temp = ndimage.filters.convolve(
-        input=image, weights=2*row_filter_vec, output=None, mode='reflect',
-        cval=0.0, origin=0)
+    expanded_image = ndimage.filters.convolve(
+       input=expanded_image, weights=2*row_filter_vec, output=None,
+       mode='reflect', cval=0.0, origin=0)  # scipy.signal.convolve2d
     # as a column vector
     col_filter_vec = filter_vec.reshape(filter_vec.shape[1], 1)
-    temp = ndimage.filters.convolve(
-        input=temp, weights=2*col_filter_vec, output=None,
-        mode='reflect', cval=0.0, origin=0)
-    # up-sample by adding zeros in the odd places.
-    expanded_image = np.zeros((2*temp.shape[0], 2*temp.shape[1]))
-    expanded_image[::2, ::2] = temp
+    expanded_image = ndimage.filters.convolve(
+       input=expanded_image, weights=2*col_filter_vec, output=None,
+       mode='reflect', cval=0.0, origin=0)
     return expanded_image
 
 
@@ -204,11 +205,13 @@ def build_laplacian_pyramid(im, max_levels, filter_size):
     filter_vec should be normalized.
     """
     pyr = []  # output is a python list
-    gaussian_pyramid, filter_vec = build_gaussian_pyramid(im, max_levels, filter_size)
+    gaussian_pyramid, filter_vec = build_gaussian_pyramid(im, max_levels,
+                                                          filter_size)
     new_im = None
     for i in range(len(gaussian_pyramid)):
-        if i < len(gaussian_pyramid) - 1:  # len(gaussian_pyramid) - 2
-            new_im = gaussian_pyramid[i] - expand(gaussian_pyramid[i + 1], filter_vec)
+        if i < len(gaussian_pyramid) - 1:
+            expanded_image = expand((gaussian_pyramid[i + 1]), filter_vec)
+            new_im = (gaussian_pyramid[i]) - expanded_image
         if i == len(gaussian_pyramid) - 1:
             new_im = gaussian_pyramid[-1]
         # insert level to the top
@@ -237,15 +240,23 @@ def laplacian_to_image(lpyr, filter_vec, coeff):
      levels in the pyramid lpyr.
     :return: img
     """
-    img = None
-    # for i = len(lpyr) - 1, len(lpyr) - 3, ..., 0.
+    lpyr = np.array(lpyr, dtype=object)
     for i in range(len(lpyr) - 1, -1, -1):
-        img = expand(img, filter_vec)
-        img += coeff[i] * lpyr[i]
+        lpyr[i] = np.multiply(coeff[i], lpyr[i])
+    img = lpyr[-1]
+    # for i = len(lpyr) - 1, len(lpyr) - 3, ..., 0.
+    for i in range(len(lpyr) - 2, -1, -1):
+        img = expand(img, filter_vec) + lpyr[i]
     return img
 
 
 # ************************** 3.3 Pyramid display *****************************
+
+
+def linear_stretch_image(image):
+    image = (image - np.amin(image)) / (np.amax(image) - np.amin(image))
+    image = np.array(image)
+    return image
 
 
 def render_pyramid(pyr, levels):
@@ -261,12 +272,20 @@ def render_pyramid(pyr, levels):
     pyramid pyr are stacked horizontally (after stretching the values to
     [0, 1]). The function render_pyramid should only return the big image res.
     """
-    res = None  # np.asarray(pyr[0]) todo: can be none?
-    # stretch the values of each pyramid level to [0, 1]
-    stretched_pyr = (pyr - np.min(pyr)) / (np.max(pyr) - np.min(pyr))
-    for i in range(levels):
-        # composing it into the black wide image
-        res = np.hstack((res, np.asarray(stretched_pyr[i])))
+    # res is a single black image
+    res_rows = len(pyr[0])
+    res_cols = 0
+    for i in range(len(pyr)):
+        res_cols += len(pyr[i][0])
+    res = np.zeros((res_rows, res_cols))
+    i = 0
+    cols_index = 0
+    while bool(i <= levels - 1) and (i < len(pyr)):
+        # stretch the values of each pyramid level to [0, 1]
+        stretched_pyr = linear_stretch_image(pyr[i])
+        res[:len(pyr[i]), cols_index:cols_index + len(pyr[i][0])] = stretched_pyr
+        cols_index += len(pyr[i][0])
+        i += 1
     return res
 
 
@@ -280,13 +299,14 @@ def display_pyramid(pyr, levels):
     :return:
     """
     result = render_pyramid(pyr, levels)
-    plt.imshow(result)  # cmap='gray'
+    plt.imshow(result, cmap='gray')  # todo: cmap='gray'?
 
 
 # ********************* 4 Pyramid Blending ***********************************
 
 
-def pyramid_blending(im1, im2, mask, max_levels, filter_size_im, filter_size_mask):
+def pyramid_blending(im1, im2, mask, max_levels, filter_size_im,
+                     filter_size_mask):
     """
     pyramid blending as described in the lecture.
 
@@ -319,25 +339,33 @@ def pyramid_blending(im1, im2, mask, max_levels, filter_size_im, filter_size_mas
     """
     # 1. Construct Laplacian pyramids L1 and L2 for the input images im1 and
     # im2, respectively.
-    first_laplacian_pyramid = build_laplacian_pyramid(im1, max_levels, filter_size_im)
-    second_laplacian_pyramid = build_laplacian_pyramid(im2, max_levels, filter_size_im)
-
+    first_laplacian_pyramid, im1_filter_vec = build_laplacian_pyramid(
+        im1, max_levels, filter_size_im)
+    second_laplacian_pyramid, im2_filter_vec = build_laplacian_pyramid(
+        im2, max_levels, filter_size_im)
     # 2. Construct a Gaussian pyramid Gm for the provided mask
     # (convert it first to np.float64).
-    mask_gaussian_pyramid, filter_vec = build_gaussian_pyramid(mask, max_levels, filter_size_mask)
+    mask = np.array(mask).astype(np.float64)
+    mask_gaussian_pyramid, mask_filter_vec = build_gaussian_pyramid(
+        mask, max_levels, filter_size_mask)
     # 3. Construct the Laplacian pyramid of the blended image for each level k:
     # Lout[k] = Gm[k] · L1[k] + (1 − Gm[k]) · L2[k], pixel-wise multiplication.
     # Lout should be reconstructed in each level.
     output_laplacian_pyramid = []
     for i in range(len(first_laplacian_pyramid)):
-        temp = None  # np.ones_like(mask_gaussian_pyramid[i]) − mask_gaussian_pyramid[i]
-        output_laplacian_pyramid[i] = \
-        np.multiply(mask_gaussian_pyramid[i], first_laplacian_pyramid[i]) + \
-        np.multiply(temp, second_laplacian_pyramid[i])
+        # changes each entry of the matrix
+        temp = -1*mask_gaussian_pyramid[i] + 1
+        obj1 = np.multiply(
+            mask_gaussian_pyramid[i], first_laplacian_pyramid[i])
+        obj2 = np.multiply(
+            temp, second_laplacian_pyramid[i])
+        output_laplacian_pyramid.insert(
+            len(output_laplacian_pyramid), obj1 + obj2)
     # 4. Reconstruct the resulting blended image from the Laplacian pyramid
     # Lout (using ones for coefficients).
-    coeff = np.ones_like(output_laplacian_pyramid)
-    im_blend = laplacian_to_image(output_laplacian_pyramid, filter_vec, coeff)
+    coeff = np.ones(len(output_laplacian_pyramid))
+    im_blend = laplacian_to_image(
+        output_laplacian_pyramid, im1_filter_vec, coeff)
     # Make sure the output im_blend is a valid grayscale image in the range
     # [0, 1], by clipping the result to that range
     im_blend = np.clip(a=im_blend, a_min=0, a_max=1)
@@ -347,6 +375,37 @@ def pyramid_blending(im1, im2, mask, max_levels, filter_size_im, filter_size_mas
 # ****************** 4.1 Your blending examples ******************************
 # Don’t forget to include these additional 6 image files (in jpg format) in
 # your submission for the scripts to function properly.
+
+
+def blending_example_helper(im1_filename, im2_filename, mask_filename):
+    im1 = read_image(im1_filename, 2)
+    im2 = read_image(im2_filename, 2)
+    # mask is grayscale
+    mask = read_image(mask_filename, 1)
+    max_levels = 5
+    filter_size_im = 33
+    filter_size_mask = 3
+    im_blend = np.zeros_like(im1)
+    im_blend[:, :, 0] = pyramid_blending(
+        im1[:, :, 0], im2[:, :, 0], mask, max_levels, filter_size_im,
+        filter_size_mask)
+    im_blend[:, :, 1] = pyramid_blending(
+        im1[:, :, 1], im2[:, :, 1], mask, max_levels, filter_size_im,
+        filter_size_mask)
+    im_blend[:, :, 2] = pyramid_blending(
+        im1[:, :, 2], im2[:, :, 2], mask, max_levels, filter_size_im,
+        filter_size_mask)
+    # Display in a single figure with 4 quadrants:
+    # the two input images, the mask, and the resulting blended image
+    figure, axes_arr = plt.subplots(2, 2)
+    axes_arr[0, 0].imshow(im1)
+    axes_arr[0, 1].imshow(im2)
+    axes_arr[1, 0].imshow(mask, cmap='gray')
+    axes_arr[1, 1].imshow(im_blend)
+    plt.show()
+    return im1, im2, mask, im_blend
+
+
 def blending_example1():
     """
     performing pyramid blending on sets of image pairs and masks you find nice.
@@ -357,32 +416,31 @@ def blending_example1():
     The examples should present color images (RGB). To generate blended RGB
     images, perform blending on each color channel separately (on red, green
     and blue) and then combine the results into a single image.
-    Important: when you load your own images, you must use relative paths together with the this function:
-    :return: Each function should return the two images (im1 and im2), the mask (mask)
-    and the resulting blended image (im_blend).
+    Important: when you load your own images, you must use relative paths
+    together with the this function:
+    :return: Each function should return the two images (im1 and im2), the mask
+    (mask) and the resulting blended image (im_blend).
     """
-    im1_filename = "a"
-    im2_filename = "b"
-    mask_filename = "c"
-    im1 = imageio.imread(im1_filename).astype(np.float64)
-    im2 = imageio.imread(im2_filename).astype(np.float64)
-    mask = imageio.imread(mask_filename).astype(np.float64)
-    max_levels = 3
-    filter_size_im = 3
-    filter_size_mask = 3
-    im_blend = pyramid_blending(im1, im2, mask, max_levels, filter_size_im, filter_size_mask)
-    # Display the two input images, the mask, and the resulting blended image
-    # in a single figure (you can use plt.subplot() w)
-    plt.subplot2grid((2, 2), (2, 0), rowspan=1, colspan=1)  # plt.subplot() w/ 4 quadrants
-    plt.imshow()
+    im1_filename = "example1_im1.jpg"
+    im2_filename = "example1_im2.jpg"
+    mask_filename = "example1_mask.jpg"
+    im1, im2, mask, im_blend = blending_example_helper(
+        im1_filename, im2_filename, mask_filename)
     return im1, im2, mask, im_blend
 
 
-# def blending_example2():
-#     return im1, im2, mask, im_blend
+def blending_example2():
+    im1_filename = "C:/Users/Golan/OneDrive/Documents/GitHub/67829_image_processing/ex3-golans/external/meme_always.jpg"
+    im2_filename = "C:/Users/Golan/OneDrive/Documents/GitHub/67829_image_processing/ex3-golans/external/meme_fine.jpg"
+    mask_filename = "C:/Users/Golan/OneDrive/Documents/GitHub/67829_image_processing/ex3-golans/simple_mask.jpg"
+    im1, im2, mask, im_blend = blending_example_helper(
+        im1_filename, im2_filename, mask_filename)
+    return im1, im2, mask, im_blend
 
 
 # ************************* from sol1 ***************************************
+
+
 def read_image(filename, representation):
     """
     a function which reads an image file and converts it into a given
