@@ -4,6 +4,7 @@ import imageio
 from scipy import ndimage
 from scipy import signal
 import skimage.color
+import os
 
 NUM_SHADES = 256
 MAX_SHADE_VAL = 255
@@ -380,10 +381,10 @@ def pyramid_blending(im1, im2, mask, max_levels, filter_size_im,
 
 def blending_example_helper(im1_filename, im2_filename, mask_filename,
                             max_levels, filter_size_im, filter_size_mask):
-    im1 = read_image(im1_filename, 2)
-    im2 = read_image(im2_filename, 2)
+    im1 = read_image(relpath(im1_filename), 2)
+    im2 = read_image(relpath(im2_filename), 2)
     # mask is grayscale
-    mask = read_image(mask_filename, 1)
+    mask = read_image(relpath(mask_filename), 1)
     im_blend = np.zeros_like(im1)
     im_blend[:, :, 0] = pyramid_blending(
         im1[:, :, 0], im2[:, :, 0], mask, max_levels, filter_size_im,
@@ -422,7 +423,7 @@ def blending_example1():
     """
     im1_filename = "example1_im1.jpg"
     im2_filename = "example1_im2.jpg"
-    mask_filename = "example1_mask.jpg"
+    mask_filename = "binary_example1_mask.jpg"
     max_levels = 5
     filter_size_im = 5
     filter_size_mask = 3
@@ -435,7 +436,7 @@ def blending_example1():
 def blending_example2():
     im1_filename = "example2_im1.jpg"
     im2_filename = "example2_im2.jpg"
-    mask_filename = "example2_mask.jpg"
+    mask_filename = "binary_example2_mask.jpg"
     max_levels = 5
     filter_size_im = 5
     filter_size_mask = 3
@@ -468,3 +469,10 @@ def read_image(filename, representation):
         image = skimage.color.rgb2gray(image)
     # normalize intensities
     return image / MAX_SHADE_VAL
+
+
+# *************************** from instructions *****************************
+
+
+def relpath(filename):
+    return os.path.join(os.path.dirname(__file__), filename)
