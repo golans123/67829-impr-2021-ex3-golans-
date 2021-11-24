@@ -378,14 +378,12 @@ def pyramid_blending(im1, im2, mask, max_levels, filter_size_im,
 # your submission for the scripts to function properly.
 
 
-def blending_example_helper(im1_filename, im2_filename, mask_filename):
+def blending_example_helper(im1_filename, im2_filename, mask_filename,
+                            max_levels, filter_size_im, filter_size_mask):
     im1 = read_image(im1_filename, 2)
     im2 = read_image(im2_filename, 2)
     # mask is grayscale
     mask = read_image(mask_filename, 1)
-    max_levels = 5
-    filter_size_im = 33
-    filter_size_mask = 3
     im_blend = np.zeros_like(im1)
     im_blend[:, :, 0] = pyramid_blending(
         im1[:, :, 0], im2[:, :, 0], mask, max_levels, filter_size_im,
@@ -425,17 +423,25 @@ def blending_example1():
     im1_filename = "example1_im1.jpg"
     im2_filename = "example1_im2.jpg"
     mask_filename = "example1_mask.jpg"
+    max_levels = 5
+    filter_size_im = 5
+    filter_size_mask = 3
     im1, im2, mask, im_blend = blending_example_helper(
-        im1_filename, im2_filename, mask_filename)
+        im1_filename, im2_filename, mask_filename, max_levels, filter_size_im,
+        filter_size_mask)
     return im1, im2, mask, im_blend
 
 
 def blending_example2():
-    im1_filename = "C:/Users/Golan/OneDrive/Documents/GitHub/67829_image_processing/ex3-golans/external/meme_always.jpg"
-    im2_filename = "C:/Users/Golan/OneDrive/Documents/GitHub/67829_image_processing/ex3-golans/external/meme_fine.jpg"
-    mask_filename = "C:/Users/Golan/OneDrive/Documents/GitHub/67829_image_processing/ex3-golans/simple_mask.jpg"
+    im1_filename = "example2_im1.jpg"
+    im2_filename = "example2_im2.jpg"
+    mask_filename = "example2_mask.jpg"
+    max_levels = 5
+    filter_size_im = 5
+    filter_size_mask = 3
     im1, im2, mask, im_blend = blending_example_helper(
-        im1_filename, im2_filename, mask_filename)
+        im1_filename, im2_filename, mask_filename, max_levels, filter_size_im,
+        filter_size_mask)
     return im1, im2, mask, im_blend
 
 

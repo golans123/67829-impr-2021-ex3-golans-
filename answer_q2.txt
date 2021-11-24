@@ -7,3 +7,8 @@ the bigger the filter size, the longer/smoother the transition are from one pict
 This happens since it creates laplacian pyramid pictures with greater contrast, this means that each level
 represents a smaller/narrower frequency domain, which its higher frequencies. Thus each stitching is between
 two pictures with greater frequency similarity and the stitching is smoother.
+
+
+when substructing twwo adjacent pictures (they are more similar), to the difference is smaller - more edges.
+
+twwo adjacent pictures become more foreign.
