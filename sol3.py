@@ -274,46 +274,44 @@ def render_pyramid(pyr, levels):
     [0, 1]). The function render_pyramid should only return the big image res.
     """
     # res is a single black image
-    # res_rows = len(pyr[0])
-    # res_cols = 0
-    # for i in range(len(pyr)):
-    #     res_cols += len(pyr[i][0])
-    # res = np.zeros((res_rows, res_cols))
-    # i = 0
-    # cols_index = 0
-    # while bool(i <= levels - 1) and (i < len(pyr)):
-    #     # stretch the values of each pyramid level to [0, 1]
-    #     stretched_pyr = linear_stretch_image(pyr[i])
-    #     res[:len(pyr[i]), cols_index:cols_index + len(pyr[i][0])] = \
-    #         stretched_pyr
-    #     cols_index += len(pyr[i][0])
-    #     i += 1
-    # return res
+    res_rows = len(pyr[0])
+    res_cols = 0
+    for i in range(len(pyr)):
+        res_cols += len(pyr[i][0])
+    res = np.zeros((res_rows, res_cols))
+    i = 0
+    cols_index = 0
+    while bool(i <= levels - 1) and (i < len(pyr)):
+        # stretch the values of each pyramid level to [0, 1]
+        stretched_pyr = linear_stretch_image(pyr[i])
+        res[:len(pyr[i]), cols_index:cols_index + len(pyr[i][0])] = \
+            stretched_pyr
+        cols_index += len(pyr[i][0])
+        i += 1
+    return res
 
-    levels_num = min(len(pyr), levels)
-
-    # stretching the values to [0, 1]
-    stretched_pyr = [stretch_im(img) for img in pyr[:levels_num]]
-
-    # pad and stack images
-    res_hight = pyr[0].shape[0]
-    to_stack = [
-        np.pad(im, ((0, res_hight - im.shape[0]), (0, 0)), mode='constant') for
-        im in stretched_pyr]
-    return np.hstack(to_stack)
-
-
-def stretch_im(img):  # todo: delete
-    """
-    stretching the image values to [0, 1]
-    :param im: a grayscale image
-    :return: stretched_im
-    """
-    min = np.min(img)
-    max = np.max(img)
-    return (img - min) / (max - min)
+    # levels_num = min(len(pyr), levels)
+    #
+    # # stretching the values to [0, 1]
+    # stretched_pyr = [stretch_im(img) for img in pyr[:levels_num]]
+    #
+    # # pad and stack images
+    # res_hight = pyr[0].shape[0]
+    # to_stack = [
+    #     np.pad(im, ((0, res_hight - im.shape[0]), (0, 0)), mode='constant') for
+    #     im in stretched_pyr]
+    # return np.hstack(to_stack)
 
 
+# def stretch_im(img):  # todo: delete
+#     """
+#     stretching the image values to [0, 1]
+#     :param im: a grayscale image
+#     :return: stretched_im
+#     """
+#     min = np.min(img)
+#     max = np.max(img)
+#     return (img - min) / (max - min)
 
 
 def display_pyramid(pyr, levels):
