@@ -428,7 +428,7 @@ def blending_example_helper(im1_filename, im2_filename, mask_filename,
     axes_arr[1, 0].imshow(mask, cmap='gray')
     axes_arr[1, 1].imshow(im_blend)
     plt.show()
-    return im1, im2, mask, im_blend
+    return im1, im2, mask.astype(np.bool), im_blend
 
 
 def blending_example1():
