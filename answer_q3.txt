@@ -1,9 +1,13 @@
 Q3
-What happens (and why does this happen) to the result blending from section 4 image when:
-Blending is performed with a varying number of pyramid levels (max_levels = 1,2,3,4,5,...).
+What happens (and why does this happen) to the result blending from section 4
+image when:
+Blending is performed with a varying number of pyramid levels
+(max_levels = 1,2,3,4,5,...).
 
 A3
-the higher the number of levels of the pyramid, the longer/smoother the transition are from one picture to another is.
-This happens since it creates more laplacian pyramid pictures, this means that each level
-represents a smaller/narrower frequency domain, which its higher frequencies. Thus each stitching is between
-two pictures with greater frequency similarity and the stitching is smoother.
+the higher the number of pyramid levels, the longer/smoother the transition
+are from one picture to another is.
+This happens since it creates a gaussian pyramid that also distinguished low
+frequencies, and thus a laplacian pyramid that shows edges of even smaller
+scales. thus, there gentle stitching also in low frequencies and the result is
+a smoother blending.

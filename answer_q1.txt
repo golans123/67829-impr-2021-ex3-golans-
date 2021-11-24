@@ -1,8 +1,9 @@
 Q1
-What does it mean to multiply each level in a different value? What do we try to control on?
-about the array coeff
+What does it mean to multiply each level in a different value? What do we try
+to control on? about the array coeff
 
 A1
-each level of the pyramid has different frequency domain. the bigger the picture,
-the higher the frequencies (thanks to laploacian pyramid definition).
-so the parameter we are trying to control is the dominance of each frequancy domain.
+each level of the pyramid has a different frequency domain. the bigger the
+picture, the higher the frequencies (according to the laplacian pyramid
+definition). so the parameter we are trying to control is the dominance of each
+frequency domain.
