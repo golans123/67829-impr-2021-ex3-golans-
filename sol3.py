@@ -273,15 +273,16 @@ def render_pyramid(pyr, levels):
     pyramid pyr are stacked horizontally (after stretching the values to
     [0, 1]). The function render_pyramid should only return the big image res.
     """
+    num_levels = min(len(pyr), levels)
     # res is a single black image
     res_rows = len(pyr[0])
     res_cols = 0
-    for i in range(len(pyr)):
+    for i in range(num_levels):
         res_cols += len(pyr[i][0])
     res = np.zeros((res_rows, res_cols))
     i = 0
     cols_index = 0
-    while bool(i <= levels - 1) and (i < len(pyr)):
+    while i < num_levels:
         # stretch the values of each pyramid level to [0, 1]
         stretched_pyr = linear_stretch_image(pyr[i])
         res[:len(pyr[i]), cols_index:cols_index + len(pyr[i][0])] = \
