@@ -4,3 +4,9 @@ sol2.py
 answer_q1.txt
 answer_q2.txt
 answer_q3.txt
+binary_example1_mask.jpg
+binary_example2_mask.jpg
+example1_im1.jpg
+example1_im2.jpg
+example2_im1.jpg
+example2_im2.jpg
