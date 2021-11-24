@@ -291,29 +291,6 @@ def render_pyramid(pyr, levels):
         i += 1
     return res
 
-    # levels_num = min(len(pyr), levels)
-    #
-    # # stretching the values to [0, 1]
-    # stretched_pyr = [stretch_im(img) for img in pyr[:levels_num]]
-    #
-    # # pad and stack images
-    # res_hight = pyr[0].shape[0]
-    # to_stack = [
-    #     np.pad(im, ((0, res_hight - im.shape[0]), (0, 0)), mode='constant') for
-    #     im in stretched_pyr]
-    # return np.hstack(to_stack)
-
-
-# def stretch_im(img):  # todo: delete
-#     """
-#     stretching the image values to [0, 1]
-#     :param im: a grayscale image
-#     :return: stretched_im
-#     """
-#     min = np.min(img)
-#     max = np.max(img)
-#     return (img - min) / (max - min)
-
 
 def display_pyramid(pyr, levels):
     """
@@ -325,7 +302,7 @@ def display_pyramid(pyr, levels):
     :return:
     """
     result = render_pyramid(pyr, levels)
-    plt.imshow(result, cmap='gray')  # todo: cmap='gray'?
+    plt.imshow(result, cmap='gray')
 
 
 # ********************* 4 Pyramid Blending ***********************************
